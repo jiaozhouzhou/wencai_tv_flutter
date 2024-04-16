@@ -1,0 +1,37 @@
+{
+  "id": "4500776",
+  "name": "问彩TV",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "39874787",
+      "name": "kf",
+      "font_class": "kf",
+      "unicode": "e600",
+      "unicode_decimal": 58880
+    },
+    {
+      "icon_id": "39874785",
+      "name": "screen",
+      "font_class": "screen",
+      "unicode": "e601",
+      "unicode_decimal": 58881
+    },
+    {
+      "icon_id": "39874786",
+      "name": "refresh",
+      "font_class": "refresh",
+      "unicode": "e602",
+      "unicode_decimal": 58882
+    },
+    {
+      "icon_id": "39874784",
+      "name": "exit",
+      "font_class": "exit",
+      "unicode": "e603",
+      "unicode_decimal": 58883
+    }
+  ]
+}
