@@ -21,6 +21,11 @@ class _PosterItemState extends State<PosterItem> {
   bool focused = false;
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }

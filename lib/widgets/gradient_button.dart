@@ -12,11 +12,13 @@ class GradientButton extends StatefulWidget {
   final BorderRadius borderRadius;
   final TextStyle textStyle;
   final bool disabled;
+  final FocusNode? focusNode;
 
   const GradientButton({
     super.key,
     required this.text,
     required this.onPressed,
+    this.focusNode,
     this.width = 200.0,
     this.height = 60.0,
     this.startColor = Colors.red,
@@ -43,6 +45,7 @@ class _GradientButton extends State<GradientButton> {
   @override
   Widget build(BuildContext context) {
     final material = Focus(
+      focusNode: widget.focusNode,
       debugLabel: widget.text,
       // autofocus: true,
       onFocusChange: (val){

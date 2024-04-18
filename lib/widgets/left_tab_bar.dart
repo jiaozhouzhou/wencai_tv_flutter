@@ -57,6 +57,8 @@ class _LeftTabBar extends State<LeftTabBar> {
           if(val){
             chooseTab(item['id']);
             // navBar.jumpTo(132.w);
+          }else{
+            chooseTab(0);
           }
         },
         child: selected==item['id'] ? WcButton(
@@ -89,19 +91,19 @@ class _LeftTabBar extends State<LeftTabBar> {
   @override
   Widget build(BuildContext context) {
     final list = listDate.map(buildBtn);
-    return Container(
-      width: widget.isHorizontal ? 1232.w : 132.w,
-      height:  widget.isHorizontal ? 84.w : null,
-      constraints: BoxConstraints(
-        maxHeight: widget.isHorizontal ? 84.w : 1034.h, // 设置最大高度
-      ),
-      color: const Color.fromRGBO(4, 8, 89, 1),
-      child: Consumer<Config>(
-        builder: (context, config, child)=> SingleChildScrollView(
+    return Consumer<Config>(
+      builder: (context, config, child)=> Container(
+        width: config.isHorizontal ? 1232.w : 132.w,
+        height:  config.isHorizontal ? 84.w : null,
+        constraints: BoxConstraints(
+          maxHeight: config.isHorizontal ? 84.w : 1034.w, // 设置最大高度
+        ),
+        color: const Color.fromRGBO(4, 8, 89, 1),
+        child: SingleChildScrollView(
           controller: widget.scrollController,
-          scrollDirection: widget.isHorizontal ? Axis.horizontal : Axis.vertical,
+          scrollDirection: config.isHorizontal ? Axis.horizontal : Axis.vertical,
           child: Flex(
-            direction:  widget.isHorizontal ? Axis.horizontal : Axis.vertical,
+            direction:  config.isHorizontal ? Axis.horizontal : Axis.vertical,
             mainAxisAlignment: MainAxisAlignment.start,
             children: <Widget>[ ...list ]
           ),

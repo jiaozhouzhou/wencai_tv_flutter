@@ -11,12 +11,14 @@ class CustomInput extends StatefulWidget {
   final VoidCallback onClearTap;
   final VoidCallback? onEditingComplete;
   final double? fontSize;
+  final FocusNode? focusNode;
 
   const CustomInput({
     super.key,
     required this.width,
     this.height,
     this.fontSize,
+    this.focusNode,
     required this.inputType,
     required this.hintText,
     required this.onChanged,
@@ -29,7 +31,19 @@ class CustomInput extends StatefulWidget {
 }
 
 class _CustomInputState extends State<CustomInput> {
-  final FocusNode inputNode = FocusNode();
+  late FocusNode inputNode;
+  bool focused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    inputNode = widget.focusNode ?? FocusNode();
+    inputNode.addListener(() {
+      setState(() {
+        focused = inputNode.hasFocus;
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -54,7 +68,7 @@ class _CustomInputState extends State<CustomInput> {
         contentPadding: EdgeInsets.only(top: 8.w, bottom: 8.w, left: 20.w, right: 20.w),
         decoration: BoxDecoration(
           color: const Color.fromRGBO(255, 255, 255, 1),
-          border: inputNode.hasPrimaryFocus ? Border.all(color: Colors.yellow, width: 2.w) : Border.all(color: const Color.fromRGBO(189, 189, 189, 1), width: 2.w),
+          border: inputNode.hasFocus ? Border.all(color: Colors.yellow, width: 2.w) : Border.all(color: const Color.fromRGBO(189, 189, 189, 1), width: 2.w),
           borderRadius: BorderRadius.circular(10.w),
         ),
         // inputDecoration: InputDecoration(

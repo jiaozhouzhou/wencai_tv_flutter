@@ -5,6 +5,9 @@ import 'package:tdesign_flutter/tdesign_flutter.dart';
 import '../widgets/left_tab_bar.dart';
 import '../widgets/home_header.dart';
 import '../widgets/poster_item.dart';
+import '../widgets/bg_container.dart';
+import 'package:provider/provider.dart';
+import '../states/config.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -19,16 +22,21 @@ class _MyHomePageState extends State<MyHomePage> {
   final FocusScopeNode listScope = FocusScopeNode(); // 海报列表焦点区域
   final ScrollController navBar = ScrollController();
   final ScrollController listCon = ScrollController();
+  final GlobalKey leftBtnDom = GlobalKey();
   final nodeArr = <FocusNode>[];
 
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
+  void initListFocusNode(){
     for (var i = 0; i < 30; i++) {
       final fn = FocusNode(debugLabel: 'poster$i');
       nodeArr.add(fn);
     }
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    initListFocusNode();
+    super.initState();
   }
 
   @override
@@ -46,21 +54,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final config = context.watch<Config>();
+    final bool isHorizontal = config.isHorizontal;
     final conObj = MediaQuery.of(context);
-    final bool isHorizontal = conObj.orientation == Orientation.landscape;
-    final list = nodeArr.map((item)=>PosterItem(focusNode: item));
+    final colNum = isHorizontal ? 7 : 3; // 列表展示一排展示几个
+    final int totalNum = (nodeArr.length/colNum).floor(); // 列表总行数
+    final int totalRemainder = nodeArr.length%colNum; // 列表最后一行的余数
+    final list = <Widget>[];
+    for (var item in nodeArr) {
+      list.add(PosterItem(focusNode: item));
+    }
 
     return Scaffold(
-        body: Container(
-          width: conObj.size.width,
-          height: conObj.size.height,
-          padding: EdgeInsets.only(left: 24.w, right: 24.w, top: 24.w),
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage('assets/img/login_bg.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
+        body: BgContainer(
+          isHorizontal: isHorizontal,
           child: SafeArea(
             child: Column(
               children:  <Widget>[
@@ -79,10 +86,18 @@ class _MyHomePageState extends State<MyHomePage> {
                       print('到底部了，焦点转移到其他区域');
                     }else if(event.logicalKey == LogicalKeyboardKey.arrowLeft){
                       print('left');
-                      topBtnScope.previousFocus();
+                      if(config.orientation=='left'){ // 兼容270度时 左右焦点移动错误
+                        topBtnScope.nextFocus();
+                      }else{
+                        topBtnScope.focusInDirection(config.correctDirection2(TraversalDirection.left));
+                      }
                     }else if(event.logicalKey == LogicalKeyboardKey.arrowRight){
-                      print('top_right');
-                      topBtnScope.nextFocus();
+                      print('right');
+                      if(config.orientation=='left'){ // 兼容270度时 左右焦点移动错误
+                        topBtnScope.previousFocus();
+                      }else{
+                        topBtnScope.focusInDirection(config.correctDirection2(TraversalDirection.right));
+                      }
                     }
                     return KeyEventResult.handled;
                   },
@@ -104,7 +119,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       debugLabel: 'leftBtnScope',
                       onKeyEvent: (node, event) {
                         if(!leftBtnScope.hasFocus || event is! KeyDownEvent) return KeyEventResult.handled;
-                        // print('${event.physicalKey}----${event.logicalKey}');
                         if(isHorizontal){
                           // 横版
                           if(event.logicalKey == LogicalKeyboardKey.arrowUp) {
@@ -138,7 +152,7 @@ class _MyHomePageState extends State<MyHomePage> {
                               navBar.jumpTo(132.w);
                               leftBtnScope.previousFocus();
                             }
-                            // FocusScope.of(context).focusInDirection(TraversalDirection.up);
+                            // FocusScope.of(context).focusInDirection(config.correctDirection2(TraversalDirection.up));
                           }else if(event.logicalKey == LogicalKeyboardKey.arrowDown) {
                             print('down');
                             navBar.jumpTo(-132.w);
@@ -153,6 +167,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         return KeyEventResult.handled;
                       },
                       child: LeftTabBar(
+                        key: leftBtnDom,
                         scrollController: navBar,
                         isHorizontal: isHorizontal,
                         data: '',
@@ -166,7 +181,6 @@ class _MyHomePageState extends State<MyHomePage> {
                       debugLabel: 'listScope',
                       onKeyEvent: (node, event) {
                         if(!listScope.hasFocus || event is! KeyDownEvent) return KeyEventResult.handled;
-                        final colNum = isHorizontal ? 7 : 3;
                         if(event.logicalKey == LogicalKeyboardKey.arrowUp) {
                           final lastIndex = nodeArr.indexWhere((element) => element == listScope.focusedChild);
                           // 到顶了
@@ -176,31 +190,62 @@ class _MyHomePageState extends State<MyHomePage> {
                             isHorizontal ? leftBtnScope.requestFocus() : topBtnScope.requestFocus();
                           }else{
                             print('up');
-                            listScope.focusInDirection(TraversalDirection.up);
-                            final index = nodeArr.indexWhere((element) => element == listScope.focusedChild);
-                            final int lineNum = (index/colNum).floor(); // 行数
-                            // print('焦点元素索引值：-- $index--${listScope.focusedChild}-----$lineNum');
+
+                            final nowIndex = lastIndex-colNum;
+                            final int lineNum = (nowIndex/colNum).floor(); // 行数
                             listCon.animateTo(lineNum * 283.w, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+                            nodeArr[nowIndex].requestFocus();
+
+                            // listScope.focusInDirection(config.correctDirection2(TraversalDirection.up));
+                            // final index = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                            // final int lineNum = (index/colNum).floor(); // 行数
+                            // print('焦点元素索引值：-- $index--${listScope.focusedChild}-----$lineNum');
+                            // listCon.animateTo(lineNum * 283.w, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
                           }
                         }else if(event.logicalKey == LogicalKeyboardKey.arrowDown) {
                           print('down');
-                          listScope.focusInDirection(TraversalDirection.down);
-                          final index = nodeArr.indexWhere((element) => element == listScope.focusedChild);
-                          final int lineNum = (index/colNum).floor(); // 行数
-                          listCon.animateTo(lineNum * 283.w, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+                          final lastIndex = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                          final nowIndex = lastIndex+colNum;
+                          final remainder = nowIndex%colNum; // 当前所在行的余数
+                          final int lineNum = (nowIndex/colNum).floor(); // 当前行数
+                          if(lineNum<totalNum || (lineNum==totalNum&&remainder<totalRemainder)){
+                            listCon.animateTo(lineNum * 283.w, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
+                            nodeArr[nowIndex].requestFocus();
+                          }
+
+                          // listScope.focusInDirection(config.correctDirection2(TraversalDirection.down));
+                          // final index = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                          // final int lineNum = (index/colNum).floor(); // 行数
+                          // listCon.animateTo(lineNum * 283.w, duration: const Duration(milliseconds: 200), curve: Curves.easeInOut);
                         }else if(event.logicalKey == LogicalKeyboardKey.arrowLeft){
                           print('left');
-                          int i = 1;
-                          if(!isHorizontal) i = nodeArr.indexWhere((element) => element == listScope.focusedChild);
-                          listScope.focusInDirection(TraversalDirection.left);
-                          if(!isHorizontal && i%colNum==0){ // 竖版
+                          final lastIndex = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                          final remainder = lastIndex%colNum;
+                          if(remainder==0){
+                            if(!isHorizontal){ // 竖版
                               listScope.unfocus();
                               leftBtnScope.requestFocus();
+                            }
+                          }else{
+                            nodeArr[lastIndex-1].requestFocus();
                           }
+
+                          // int i = 1;
+                          // if(!isHorizontal) i = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                          // listScope.focusInDirection(config.correctDirection2(TraversalDirection.left));
+                          // if(!isHorizontal && i%colNum==0){ // 竖版
+                          //     listScope.unfocus();
+                          //     leftBtnScope.requestFocus();
+                          // }
                         }else if(event.logicalKey == LogicalKeyboardKey.arrowRight){
                           print('right33');
-                          listScope.focusInDirection(TraversalDirection.right);
-                          // listScope.nextFocus();
+                          final lastIndex = nodeArr.indexWhere((element) => element == listScope.focusedChild);
+                          final remainder = lastIndex%colNum;
+                          if(remainder<(colNum-1) && (lastIndex<nodeArr.length-1)){
+                            nodeArr[lastIndex+1].requestFocus();
+                          }
+
+                          // listScope.focusInDirection(config.correctDirection2(TraversalDirection.right));
                         }
                         return KeyEventResult.handled;
                       },
@@ -210,7 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           width: isHorizontal ? 1232.w : 524.w,
                           // height: isHorizontal ? null : 1034.w,
                           constraints: BoxConstraints(
-                            maxHeight: isHorizontal ? (527.w- conObj.padding.top) : 1034.h,
+                            maxHeight: isHorizontal ? (527.w- conObj.padding.top) : 1034.w,
                             // maxHeight: isHorizontal ? (470.h - conObj.padding.top) : 1034.h,
                           ),
                           decoration: BoxDecoration(
@@ -222,12 +267,12 @@ class _MyHomePageState extends State<MyHomePage> {
                             shrinkWrap: true,
                             padding: EdgeInsets.all(22.w),
                             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: isHorizontal ? 7 : 3, //横轴三个子widget
+                              crossAxisCount: colNum, //横轴三个子widget
                               crossAxisSpacing: 21.w, // 横轴间隙
                               mainAxisSpacing: 21.w,
                               childAspectRatio: 146/262,
                             ),
-                            children: <Widget>[ ...list ],
+                            children: list,
                           ) : const TDEmpty(
                             type: TDEmptyType.plain,
                             emptyText: '暂无数据',
