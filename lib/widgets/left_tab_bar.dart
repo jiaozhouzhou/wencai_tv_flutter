@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../states/config.dart';
+import '../states/index.dart' show Config;
 import './wc_button.dart';
 
 class LeftTabBar extends StatefulWidget {
-  final ValueChanged<String> onValueChanged;
-  final String data;
+  final ValueChanged<int> onValueChanged;
+  final List data;
   final bool isHorizontal;
   final ScrollController scrollController;
 
@@ -24,7 +23,7 @@ class LeftTabBar extends StatefulWidget {
 }
 
 class _LeftTabBar extends State<LeftTabBar> {
-  final listDate = [
+  /*final listDate = [
     {'id': 1, 'name': '本店推荐'},
     {'id': 2, 'name': '我的收藏'},
     {'id': 3, 'name': '热点宣传'},
@@ -35,33 +34,34 @@ class _LeftTabBar extends State<LeftTabBar> {
     {'id': 8, 'name': '公益之窗'},
     {'id': 9, 'name': '数字彩热点'},
     {'id': 10, 'name': '福彩走势图'},
-  ];
-  int selected = 0;
-
-  void handleButtonClick() {
-    String newData = '子组件传递的值';
-    widget.onValueChanged(newData);
-  }
+  ];*/
+  int selected = -1;
 
   void chooseTab(id){
     setState(() {
       selected = id;
     });
+    if(id>-1){
+      // 将对应模块的列表数据返回给父组件
+      widget.onValueChanged(id);
+    }
   }
 
-  Widget buildBtn(item){
+  Widget buildBtn(obj, index){
+    final item = obj['category'];
+    // final index = item['id'];
     return Focus(
-        debugLabel: 'btn${item['id']}',
+        debugLabel: 'btn$index}',
         autofocus: true,
         onFocusChange: (val){
           if(val){
-            chooseTab(item['id']);
+            chooseTab(index);
             // navBar.jumpTo(132.w);
           }else{
-            chooseTab(0);
+            chooseTab(-1);
           }
         },
-        child: selected==item['id'] ? WcButton(
+        child: selected==index ? WcButton(
           text: item['name'].toString(),
           width: 132.w,
           height: 84.w,
@@ -69,7 +69,7 @@ class _LeftTabBar extends State<LeftTabBar> {
           textStyle: TextStyle(fontSize: 24.sp, color: Colors.white),
           startColor: const Color.fromRGBO(254, 103, 58, 1),
           endColor: const Color.fromRGBO(253, 147, 22, 1),
-          onPressed: ()=> chooseTab(item['id']),
+          onPressed: ()=> chooseTab(index),
         ) : WcButton(
           text: item['name'].toString(),
           width: 132.w,
@@ -77,7 +77,7 @@ class _LeftTabBar extends State<LeftTabBar> {
           padding: 0,
           textStyle: TextStyle(fontSize: 24.sp, color: Colors.white),
           backgroundColor: const Color.fromRGBO(4, 8, 89, 1),
-          onPressed: ()=> chooseTab(item['id']),
+          onPressed: ()=> chooseTab(index),
         )
     );
   }
@@ -90,7 +90,11 @@ class _LeftTabBar extends State<LeftTabBar> {
 
   @override
   Widget build(BuildContext context) {
-    final list = listDate.map(buildBtn);
+    // final list = widget.data.map(buildBtn);
+    final List<Widget> list = [];
+    for(var i=0;i<widget.data.length;i++){
+      list.add(buildBtn(widget.data[i], i));
+    }
     return Consumer<Config>(
       builder: (context, config, child)=> Container(
         width: config.isHorizontal ? 1232.w : 132.w,
@@ -105,7 +109,7 @@ class _LeftTabBar extends State<LeftTabBar> {
           child: Flex(
             direction:  config.isHorizontal ? Axis.horizontal : Axis.vertical,
             mainAxisAlignment: MainAxisAlignment.start,
-            children: <Widget>[ ...list ]
+            children: list
           ),
         ),
       )

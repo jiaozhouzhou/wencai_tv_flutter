@@ -2,8 +2,8 @@
 // import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter/material.dart';
+import '../utils/helper.dart' show Helper;
+import '../common/globe.dart';
 
 class HttpUtil {
   static HttpUtil? instance;
@@ -53,16 +53,19 @@ class HttpUtil {
     dio.interceptors.add(InterceptorsWrapper(onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
       // 如果获取到token就携带上
       // options.headers.common.accesstoken =
-      print("请求之前 header = ${options.headers.toString()}");
+      if(Global.token.isNotEmpty){
+        options.headers['accesstoken'] = Global.token;
+      }
+      // debugPrint("请求之前 header = ${options.headers.toString()}");
       // 如果你想完成请求并返回一些自定义数据，你可以使用 `handler.resolve(response)`。
       // 如果你想终止请求并触发一个错误，你可以使用 `handler.reject(error)`。
       return handler.next(options); //continue
     }, onResponse: (Response response, ResponseInterceptorHandler handler) {
-      print("响应之前：$response");
+      // debugPrint("响应之前：$response");
       // 如果你想终止请求并触发一个错误，你可以使用 `handler.reject(error)`。
       return handler.next(response); // continue
     }, onError: (DioException e, ErrorInterceptorHandler handler) {
-      print("错误之前:$e");
+      debugPrint("错误之前:$e");
       // 如果你想完成请求并返回一些自定义数据，你可以使用 `handler.resolve(response)`。
       return handler.next(e);
     }));
@@ -71,17 +74,20 @@ class HttpUtil {
   /*
    * get请求
    */
-  get(url, {data, options, cancelToken}) async {
+  get(url, {data, options, cancelToken, bool loading=false}) async {
+    if(loading) Helper.showLoadingDialog();
     late Response response;
     try {
       response = await dio.get(url, queryParameters: data, options: options, cancelToken: cancelToken);
+      if(loading) Helper.hiddeLoadingDialog();
       // response.data; 响应体
       // response.headers; 响应头
       // response.request; 请求体
       // response.statusCode; 状态码
       return formatCode(response);
     } on DioException catch (e) {
-      print('get error---------$e');
+      if(loading) Helper.hiddeLoadingDialog();
+      debugPrint('get error---------$e');
       formatError(e);
     }
   }
@@ -89,13 +95,16 @@ class HttpUtil {
   /*
    * post请求
    */
-  post(url, {data, options, cancelToken}) async {
+  post(url, {data, options, cancelToken, bool loading=false}) async {
+    if(loading) Helper.showLoadingDialog();
     late Response response;
     try {
       response = await dio.post(url, queryParameters: data, options: options, cancelToken: cancelToken);
+      if(loading) Helper.hiddeLoadingDialog();
       return formatCode(response);
     } on DioException catch (e) {
-      print('post error---------$e');
+      if(loading) Helper.hiddeLoadingDialog();
+      debugPrint('post error---------$e');
       formatError(e);
     }
   }
@@ -107,11 +116,11 @@ class HttpUtil {
     try {
       response = await dio.download(urlPath, savePath, onReceiveProgress: (int count, int total) {
         //进度
-        print("$count $total");
+        debugPrint("$count $total");
       });
-      print('downloadFile success---------${response.data}');
+      debugPrint('downloadFile success---------${response.data}');
     } on DioException catch (e) {
-      print('downloadFile error---------$e');
+      debugPrint('downloadFile error---------$e');
       formatError(e);
     }
     return response.data;
@@ -128,17 +137,11 @@ class HttpUtil {
       case 0: // 正常
         return res['data'];
       case 1:
-        if(res['msg']){ // 显示错误信息
-          Fluttertoast.showToast(
-              msg: res['msg'],
-              toastLength: Toast.LENGTH_SHORT,
-              gravity: ToastGravity.CENTER,
-              timeInSecForIosWeb: 1,
-              backgroundColor: Colors.black26,
-              textColor: Colors.white,
-              fontSize: 16.0
-          );
+        if(res['msg']!=null && res['msg'].isNotEmpty){ // 显示错误信息
+          Helper.showToast(res['msg']);
         }
+        throw(res);
+      default:
         break;
     }
   }
@@ -149,22 +152,22 @@ class HttpUtil {
   void formatError(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout) {
       // It occurs when url is opened timeout.
-      print("连接超时");
+      debugPrint("连接超时");
     } else if (e.type == DioExceptionType.sendTimeout) {
       // It occurs when url is sent timeout.
-      print("请求超时");
+      debugPrint("请求超时");
     } else if (e.type == DioExceptionType.receiveTimeout) {
       //It occurs when receiving timeout
-      print("响应超时");
+      debugPrint("响应超时");
     } else if (e.type == DioExceptionType.badResponse) {
       // When the server response, but with a incorrect status, such as 404, 503...
-      print("出现异常");
+      debugPrint("出现异常");
     } else if (e.type == DioExceptionType.cancel) {
       // When the request is cancelled, dio will throw a error with this type.
-      print("请求取消");
+      debugPrint("请求取消");
     } else {
       //DEFAULT Default error type, Some other Error. In this case, you can read the DioError.error if it is not null.
-      print("未知错误");
+      debugPrint("未知错误");
     }
   }
 

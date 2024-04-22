@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:tdesign_flutter/tdesign_flutter.dart';
+import 'package:tdesign_flutter/tdesign_flutter.dart' show TDImage,TDText,TDImageType,Font;
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter/services.dart';
 
 class PosterItem extends StatefulWidget {
-  final String? imgUrl;
   final FocusNode? focusNode;
+  final Map<String, dynamic> data;
 
 
   const PosterItem({
     super.key,
-    this.imgUrl,
     this.focusNode,
+    required this.data,
   });
 
   @override
@@ -38,12 +39,19 @@ class _PosterItemState extends State<PosterItem> {
 
   @override
   Widget build(BuildContext context) {
-
+    final data = widget.data;
     return Focus(
         focusNode: widget.focusNode,
         // autofocus: true,
         onFocusChange: (val){
           changeFocus(val);
+        },
+        onKeyEvent: (node, event){
+          if(event is KeyUpEvent && (event.logicalKey == LogicalKeyboardKey.select||event.logicalKey == LogicalKeyboardKey.enter)){
+            Navigator.pushNamed(context, "detail", arguments: data['id']);
+            return KeyEventResult.handled;
+          }
+          return KeyEventResult.ignored;
         },
         child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
@@ -51,18 +59,26 @@ class _PosterItemState extends State<PosterItem> {
               Container(
                   decoration: BoxDecoration(
                       border: Border.all(color: focused ? Colors.yellow : Colors.transparent, width: 2.w),
+                      boxShadow: focused ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5), // 阴影颜色
+                          spreadRadius: 5.0, // 阴影扩展半径
+                          blurRadius: 10.0, // 阴影模糊半径
+                          offset: const Offset(0.0, 0.0), // 阴影偏移量
+                        ),
+                      ] : null,
                   ),
                   child: TDImage(
                       width: 146.w,
                       height: 225.w,
-                      imgUrl: '',
+                      imgUrl: 'http://static.mojing310.com/${data['image']}_s150w',
                       type: TDImageType.stretch,
                       errorWidget: TDText(
                         '加载失败',
                         forceVerticalCenter: true,
-                        font: TDTheme.of(context).fontBodyExtraSmall,
+                        font: Font(size: 20.sp.toInt(), lineHeight: 1),
                         fontWeight: FontWeight.w500,
-                        textColor: TDTheme.of(context).fontGyColor3,
+                        textColor: const Color.fromRGBO(29, 33, 41, 1),
                       )
                   )
               ),
@@ -72,7 +88,8 @@ class _PosterItemState extends State<PosterItem> {
                 style: TextStyle(fontSize: 22.sp, color: const Color.fromRGBO(29, 33, 41, 1), height: 1),
                 maxLines: 1, // 限制文本只显示一行
                 overflow: TextOverflow.ellipsis, // 当文本超出时显示省略号
-              )
+              ),
+              // SizedBox(height: 1.w),
             ],
           ),
     );

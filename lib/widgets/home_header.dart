@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
+import 'package:wencai_tv_flutter/states/index.dart' show Config, User;
 import '../widgets/focus_wc_button.dart';
 import 'package:provider/provider.dart';
-import '../states/config.dart';
-import '../common/globe.dart';
 import '../common/my_icons.dart';
+import '../utils/helper.dart' show Helper;
 
 class HomeHeader extends StatefulWidget {
-  final ValueChanged<String> onValueChanged;
+  final VoidCallback reFreshFun;
   final String data;
   final bool isHorizontal;
 
   const HomeHeader({
     super.key,
     required this.data,
-    required this.onValueChanged,
+    required this.reFreshFun,
     required this.isHorizontal,
   });
 
@@ -26,11 +25,6 @@ class HomeHeader extends StatefulWidget {
 
 class _HomeHeader extends State<HomeHeader> {
 
-  void handleButtonClick() {
-    String newData = '子组件传递的值';
-    widget.onValueChanged(newData);
-  }
-
   @override
   void dispose() {
     super.dispose();
@@ -38,8 +32,9 @@ class _HomeHeader extends State<HomeHeader> {
 
   @override
   Widget build(BuildContext context) {
-    return  Consumer<Config>(
-      builder: (context, config, child){
+    return  Consumer2<Config,User>(
+      builder: (context, config, user, child){
+        final tVipExpireTime = Helper.formatTimestamp(user.userinfo['tvip_expire_time']);
         return SizedBox(
           width: config.isHorizontal ? 1232.w : null,
           child: Row(
@@ -71,7 +66,7 @@ class _HomeHeader extends State<HomeHeader> {
                         ]
                     ),
                     SizedBox(width: 10.w,height: 6.w),
-                    Text('会员截止到2024-07-12', style: TextStyle(color: Colors.white, fontSize: 20.sp))
+                    Text('会员截止到$tVipExpireTime', style: TextStyle(color: Colors.white, fontSize: 20.sp))
                   ],
                 ),
                 Row(
@@ -88,16 +83,14 @@ class _HomeHeader extends State<HomeHeader> {
                       FocusWcButton(
                         text: '刷新',
                         icon: MyIcons.refresh,
-                        onPressed: (){
-                          print('刷新');
-                        },
+                        onPressed: widget.reFreshFun,
                       ),
                       SizedBox(width: 12.w),
                       FocusWcButton(
                         text: '客服',
                         icon: MyIcons.kf,
                         onPressed: (){
-                          print('跳转客服');
+                          debugPrint('跳转客服');
                         },
                       ),
                       SizedBox(width: 12.w),
@@ -105,8 +98,9 @@ class _HomeHeader extends State<HomeHeader> {
                         text: '退出',
                         icon: MyIcons.exit,
                         onPressed: (){
-                          Navigator.pushNamed(context, "login");
-                          // Navigator.pop(context, "我是返回值")
+                          // 退出登录
+                          user.setToken('');
+                          Navigator.pushReplacementNamed(context, "login");
                         },
                       ),
                     ]

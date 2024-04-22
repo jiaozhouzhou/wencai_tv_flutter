@@ -12,6 +12,8 @@ class CustomInput extends StatefulWidget {
   final VoidCallback? onEditingComplete;
   final double? fontSize;
   final FocusNode? focusNode;
+  final TextEditingController? controller;
+  final ValueChanged<bool> onFocusChange;
 
   const CustomInput({
     super.key,
@@ -23,7 +25,9 @@ class CustomInput extends StatefulWidget {
     required this.hintText,
     required this.onChanged,
     required this.onClearTap,
+    required this.onFocusChange,
     this.onEditingComplete,
+    this.controller,
   });
 
   @override
@@ -40,6 +44,7 @@ class _CustomInputState extends State<CustomInput> {
     inputNode = widget.focusNode ?? FocusNode();
     inputNode.addListener(() {
       setState(() {
+        widget.onFocusChange(inputNode.hasFocus);
         focused = inputNode.hasFocus;
       });
     });
@@ -57,11 +62,12 @@ class _CustomInputState extends State<CustomInput> {
       // height: 58.w,
       height: widget.height,
       child: TDInput(
-        // controller: controller[0],
+        controller: widget.controller,
         focusNode: inputNode,
         autofocus: true,
         width: widget.width,
         inputType: widget.inputType,
+        needClear: false,
         showBottomDivider: false,
         textStyle: TextStyle(color: const Color.fromRGBO(29, 33, 41, 1.0), fontSize: widget.fontSize),
         hintText: widget.hintText,
@@ -78,7 +84,7 @@ class _CustomInputState extends State<CustomInput> {
         //   ),
         // ),
         onChanged: widget.onChanged,
-        onClearTap: widget.onClearTap,
+        // onClearTap: widget.onClearTap,
         onEditingComplete: widget.onEditingComplete,
       ),
     );

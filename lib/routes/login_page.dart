@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'package:blur/blur.dart';
@@ -7,10 +8,12 @@ import '../widgets/gradient_button.dart';
 import '../widgets/focus_wc_button.dart';
 import '../widgets/bg_container.dart';
 import '../widgets/input.dart';
+// import '../widgets/num_keyboard.dart';
 import '../common/my_icons.dart';
 import '../utils/request.dart';
 import 'package:provider/provider.dart';
-import '../states/config.dart';
+import '../states/index.dart' show Config, User;
+import '../utils/helper.dart' show Helper;
 
 class LoginRoute extends StatefulWidget {
   const LoginRoute({super.key});
@@ -22,33 +25,119 @@ class LoginRoute extends StatefulWidget {
 class _LoginRouteState extends State<LoginRoute> {
   // final _formKey = GlobalKey<FormState>();
   final FocusScopeNode formArea = FocusScopeNode();
+  final FocusNode screenRotateBtn = FocusNode();
+  final FocusNode phoneIpt = FocusNode();
+  final FocusNode verifyCodeIpt = FocusNode();
   final FocusNode codeBtn = FocusNode();
-  // final FocusNode verifyCodeIpt= FocusNode();
+  final FocusNode loginBtn = FocusNode();
+  final TextEditingController phoneNumCtr = TextEditingController();
+  final TextEditingController verifyCodeCtr = TextEditingController();
+  late TextEditingController kbCurrentCtr;
+  String sendCodeText = '发送验证码';
+  bool isButtonDisabled = false;
+  String qrcode = '';
+  String loginId = '';
+  Timer? timer;
 
-  void getCode(){
-    print('获取验证码');
+  void startCountdown() {
+    int seconds = 60;
+    isButtonDisabled = true;
+    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        seconds--;
+        sendCodeText = '$seconds 秒后重试';
+        if (seconds <= 0) {
+          timer.cancel();
+          sendCodeText = '发送验证码';
+          isButtonDisabled = false;
+        }
+      });
+    });
   }
 
-  void toLogin(){
-    print('去登陆');
-    Navigator.pushReplacementNamed(context, "/");
+  bool verifyPhone(){
+    if(phoneNumCtr.text.isEmpty || phoneNumCtr.text.length<11){
+      phoneIpt.requestFocus();
+      Helper.showToast('请输入正确手机号码');
+      return false;
+    }else{
+      return true;
+    }
+  }
+
+  void getCode(){
+    // 验证手机号
+    if(!verifyPhone()) return;
+    // 组合请求数据
+    final Map<String, dynamic> data = {
+      'mobile': phoneNumCtr.text,
+      'scene': 'login',
+      'type': 'sms'
+    };
+    // 请求手机验证码后,开始倒计时
+    HttpUtil().post("send/sendSms", data: data).then((res){
+      // 获取数据
+      debugPrint('res: $res');
+      startCountdown();
+    });
+  }
+
+  void toLogin(BuildContext context){
+    // 验证手机号和验证码
+    if(!verifyPhone()) return;
+    if(verifyCodeCtr.text.isEmpty || verifyCodeCtr.text.length!=4){
+      verifyCodeIpt.requestFocus();
+      Helper.showToast('请输入正确的验证码');
+      return;
+    }
+    // 组合请求数据
+    final Map<String, dynamic> data = {
+      'info': [],
+      'mobile': phoneNumCtr.text,
+      'tv_client_id': '',
+      'vcode': verifyCodeCtr.text
+    };
+    HttpUtil().post("login/index", data: data, loading: true).then((res){
+      context.read<User>().setUserInfo(res);
+      context.read<User>().setToken(res['access_token']);
+      // 登录成功跳转首页
+      Navigator.pushReplacementNamed(context, "/");
+    }).catchError((res){
+      debugPrint('登录接口错误 $res');
+    });
+  }
+
+  void focusChangeHandle(flag, ctr){
+    setState(() {
+      if(flag) kbCurrentCtr = ctr;
+    });
   }
 
   @override
   void initState() {
+    kbCurrentCtr = phoneNumCtr;
     // TODO: implement initState
     HttpUtil().post("wechat/getLoginQrcode").then((res){
       // 获取数据
-      print('res: $res');
+      setState(() {
+        loginId = res['login_id'];
+        qrcode = res['url'];
+      });
     });
     super.initState();
   }
 
   @override
   void dispose() {
+    timer?.cancel();
     formArea.dispose();
+    screenRotateBtn.dispose();
+    phoneNumCtr.dispose();
+    verifyCodeCtr.dispose();
+    // phoneIpt.dispose();
     // verifyCodeIpt.dispose();
     codeBtn.dispose();
+    loginBtn.dispose();
     super.dispose();
   }
 
@@ -59,8 +148,8 @@ class _LoginRouteState extends State<LoginRoute> {
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: SingleChildScrollView(
-        child: BgContainer(
+      // body: SingleChildScrollView(
+      body: BgContainer(
           isHorizontal: isHorizontal,
           child: FocusScope(
             node: formArea,
@@ -70,17 +159,28 @@ class _LoginRouteState extends State<LoginRoute> {
               // print('-----${event.logicalKey}-----${event.physicalKey}');
               if(!formArea.hasFocus || event is! KeyDownEvent) return KeyEventResult.ignored;
               if(event.logicalKey == LogicalKeyboardKey.arrowUp) {
-                if(formArea.focusedChild==codeBtn){ // 验证码按钮向上按的时候
-                  formArea.children.elementAt(0).requestFocus();
+                if(codeBtn.hasFocus){ // 验证码按钮向上按的时候
+                  phoneIpt.requestFocus();
                 }else{
                   formArea.focusInDirection(config.correctDirection2(TraversalDirection.up));
                 }
               }else if(event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                formArea.focusInDirection(config.correctDirection2(TraversalDirection.down));
+                if(screenRotateBtn.hasFocus){
+                  phoneIpt.requestFocus();
+                }else if(phoneIpt.hasFocus){
+                  codeBtn.requestFocus();
+                }else if(codeBtn.hasFocus||verifyCodeIpt.hasFocus){
+                  loginBtn.requestFocus();
+                }
               }else if(event.logicalKey == LogicalKeyboardKey.arrowLeft){
-                formArea.focusInDirection(config.correctDirection2(TraversalDirection.left));
+                if(!verifyCodeIpt.hasFocus && !phoneIpt.hasFocus){
+                  formArea.focusInDirection(config.correctDirection2(TraversalDirection.left));
+                }
               }else if(event.logicalKey == LogicalKeyboardKey.arrowRight){
                 formArea.focusInDirection(config.correctDirection2(TraversalDirection.right));
+              }else if((event.logicalKey==LogicalKeyboardKey.select||event.logicalKey==LogicalKeyboardKey.enter) && (phoneIpt.hasFocus||verifyCodeIpt.hasFocus)) {
+                // 打开键盘弹窗
+                Helper.openKeyBoard(context, kbCurrentCtr);
               }
               return KeyEventResult.handled;
             },
@@ -111,19 +211,19 @@ class _LoginRouteState extends State<LoginRoute> {
                       ),
                       SizedBox(height: 32.w),
                       CustomInput(
-                        // controller: controller[0],
+                        focusNode: phoneIpt,
+                        controller: phoneNumCtr,
                         width: 514.w,
                         height: isHorizontal ? 48.w : 58.w,
-                        inputType: TextInputType.text,
+                        inputType: TextInputType.none,
                         fontSize: isHorizontal ? 18.sp : 24.sp,
                         hintText: '请输入您的手机号',
+                        onFocusChange: (flag)=> focusChangeHandle(flag, phoneNumCtr),
                         onChanged: (text) {
-                          print('11111 $text');
-                          // setState(() {});
+                          debugPrint('11111 $text');
                         },
                         onClearTap: () {
                           // controller[0].clear();
-                          setState(() {});
                         },
                         onEditingComplete: (){
                           // formArea.nextFocus();
@@ -137,13 +237,14 @@ class _LoginRouteState extends State<LoginRoute> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CustomInput(
-                            // focusNode: verifyCodeIpt,
-                            // controller: controller[0],
+                            focusNode: verifyCodeIpt,
+                            controller: verifyCodeCtr,
                             width: 356.w,
                             height: isHorizontal ? 48.w : 58.w,
-                            inputType: TextInputType.number,
+                            inputType: TextInputType.none,
                             fontSize: isHorizontal ? 18.sp : 24.sp,
                             hintText: '请输入验证码',
+                            onFocusChange: (flag)=> focusChangeHandle(flag, verifyCodeCtr),
                             onChanged: (text) {
                               setState(() {});
                             },
@@ -161,20 +262,21 @@ class _LoginRouteState extends State<LoginRoute> {
                           SizedBox(width: 15.w),
                           GradientButton(
                             focusNode: codeBtn,
-                            text: '53s',
+                            text: sendCodeText,
                             width: 146.w,
                             height: isHorizontal ? 48.w : 70.w,
-                            disabled: true,
+                            disabled: isButtonDisabled,
                             textStyle: TextStyle(fontSize: isHorizontal ? 16.sp : 24.sp, color: Colors.white),
                             borderRadius: BorderRadius.circular(8.w),
                             startColor: const Color.fromRGBO(254, 103, 58, 1),
                             endColor: const Color.fromRGBO(253, 147, 22, 1),
-                            onPressed: getCode,
+                            onPressed: isButtonDisabled ? ()=>{} : getCode,
                           ),
                         ],
                       ),
                       SizedBox(height: isHorizontal ? 20.w : 40.w),
                       GradientButton(
+                        focusNode: loginBtn,
                         text: '立即登录',
                         width: 374.w,
                         height: isHorizontal ? 48.w :  70.w,
@@ -182,7 +284,7 @@ class _LoginRouteState extends State<LoginRoute> {
                         borderRadius: BorderRadius.circular(8.w),
                         startColor: const Color.fromRGBO(254, 103, 58, 1),
                         endColor: const Color.fromRGBO(253, 147, 22, 1),
-                        onPressed: toLogin,
+                        onPressed: ()=> toLogin(context),
                       ),
                       TDDivider(
                         width: 514.w,
@@ -194,7 +296,7 @@ class _LoginRouteState extends State<LoginRoute> {
                       TDImage(
                         width: isHorizontal ? 120.w : 150.w,
                         height: isHorizontal ? 120.w : 150.w,
-                        imgUrl: '',
+                        imgUrl: qrcode,
                         type: TDImageType.roundedSquare,
                       ),
                     ]
@@ -208,6 +310,7 @@ class _LoginRouteState extends State<LoginRoute> {
                     top: isHorizontal ? 20.w : 70.w,
                     right: isHorizontal ? 20.w : 24.w,
                     child: FocusWcButton(
+                      focusNode: screenRotateBtn,
                       text: '屏幕翻转',
                       icon: MyIcons.screen,
                       onPressed: ()=> config.screenRotate(),
@@ -217,7 +320,6 @@ class _LoginRouteState extends State<LoginRoute> {
             )
           )
         )
-      )
-    );
+      );
   }
 }

@@ -7,12 +7,14 @@ class FocusWcButton extends StatefulWidget {
   final String text;
   final VoidCallback onPressed;
   final IconData? icon;
+  final FocusNode? focusNode;
 
   const FocusWcButton({
     super.key,
     required this.text,
     required this.onPressed,
     this.icon,
+    this.focusNode,
   });
 
   @override
@@ -33,15 +35,14 @@ class _FocusWcButton extends State<FocusWcButton> {
     final bgColor = focused ? Colors.deepOrange.withAlpha(100) : const Color.fromRGBO(13, 17, 122, 1);
     return Focus(
       debugLabel: widget.text,
-      // focusNode: FocusNode(),
+      focusNode: widget.focusNode,
       autofocus: true,
       onFocusChange: (val){
         changeFocus(val);
       },
       onKeyEvent: (node, event){
-        // 按键抬起的时候触发
-        if(event is KeyUpEvent && (event.logicalKey == LogicalKeyboardKey.select||event.logicalKey == LogicalKeyboardKey.enter)){
-          print('enter333');
+        // 按键按下的时候触发
+        if(event is KeyDownEvent && (event.logicalKey == LogicalKeyboardKey.select||event.logicalKey == LogicalKeyboardKey.enter)){
           widget.onPressed();
           return KeyEventResult.handled;
         }

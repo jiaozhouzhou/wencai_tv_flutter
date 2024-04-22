@@ -1,22 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../common/globe.dart';
+import '../utils/storage.dart';
 
 class Config with ChangeNotifier {
-  bool _showToast = false;
-  String _toastCon = '';
-  int _angle = 0;
-  String _orientation = 'up';
-  bool _isHorizontal = true;
+  int _angle = Global.rotate['angle']??0;
+  String _orientation =  Global.rotate['orientation']??'up';
+  bool _isHorizontal =  Global.rotate['isHorizontal']??true;
 
-  bool get showToast => _showToast;
-  String get toastCon => _toastCon;
   bool get isHorizontal => _isHorizontal;
   String get orientation => _orientation;
   int get angle => _angle;
 
   void setToast(bool flag, String con) {
-    _showToast = flag;
-    _toastCon = con;
     notifyListeners();
   }
 
@@ -28,7 +24,6 @@ class Config with ChangeNotifier {
 
   void screenRotate(){
     if(_orientation=='up'){
-      print('旋转90度');
       _angle = 1; // 90度
       _orientation = 'right';
     }else if(_orientation=='right'){
@@ -43,6 +38,13 @@ class Config with ChangeNotifier {
     }
     _isHorizontal = !_isHorizontal;
     notifyListeners();
+    // 同步数据到本地存储
+    final Map<String, dynamic> rotate = {
+      'isHorizontal': _isHorizontal,
+      'orientation': _orientation,
+      'angle': _angle,
+    };
+    Storage.setData('rotate', rotate);
   }
 
   // 正确方向对照表
